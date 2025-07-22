@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <title>Contour Crafter</title>
   <style>
     body {
@@ -23,6 +23,7 @@
     canvas {
       border: 1px solid #fff;
       margin-top: 1rem;
+      background-color: black;
     }
 
     .controls {
@@ -59,6 +60,9 @@
       background-color: #555;
     }
   </style>
+
+  <!-- D3 Contour Library -->
+  <script src="https://cdn.jsdelivr.net/npm/d3-contour@4"></script>
 </head>
 <body>
   <h1>Contour Crafter</h1>
@@ -68,20 +72,18 @@
   <div class="controls">
     <div class="control-group">
       <label for="zoom">Zoom</label>
-      <input type="range" id="zoom" min="0.005" max="0.1" step="0.001" value="0.02">
+      <input type="range" id="zoom" min="0.005" max="0.05" step="0.001" value="0.015">
     </div>
 
     <div class="control-group">
       <label for="detail">Detail</label>
-      <input type="range" id="detail" min="5" max="50" step="1" value="20">
+      <input type="range" id="detail" min="5" max="50" step="1" value="15">
     </div>
 
     <div class="control-group">
       <label for="theme">Color Theme</label>
       <select id="theme">
         <option value="bw">Basic</option>
-        <option value="cool">Cool (Coming Soon)</option>
-        <option value="warm">Warm (Coming Soon)</option>
       </select>
     </div>
   </div>
@@ -91,7 +93,7 @@
     <button disabled title="Coming Soon!">🌍 Real Places (Coming Soon)</button>
   </div>
 
-  <!-- Simplex Noise implementation -->
+  <!-- Simplex Noise Generator -->
   <script>
     class SimplexNoise {
       constructor(random = Math.random) {
@@ -129,11 +131,8 @@
         const y0 = yin - Y0;
 
         let i1, j1;
-        if (x0 > y0) {
-          i1 = 1; j1 = 0;
-        } else {
-          i1 = 0; j1 = 1;
-        }
+        if (x0 > y0) { i1 = 1; j1 = 0; }
+        else { i1 = 0; j1 = 1; }
 
         const x1 = x0 - i1 + G2;
         const y1 = y0 - j1 + G2;
@@ -160,43 +159,62 @@
     }
   </script>
 
-  <!-- Main logic -->
-<script>
-  const canvas = document.getElementById("contourCanvas");
-  const ctx = canvas.getContext("2d");
-  const simplex = new SimplexNoise();
+  <!-- Contour Rendering Script -->
+  <script>
+    const canvas = document.getElementById("contourCanvas");
+    const ctx = canvas.getContext("2d");
+    const simplex = new SimplexNoise();
 
-  function generate() {
-    const width = canvas.width;
-    const height = canvas.height;
-    const zoom = parseFloat(document.getElementById('zoom').value);
-    const levels = parseInt(document.getElementById('detail').value);
+    function generate() {
+      const width = 128;
+      const height = 128;
+      const zoom = parseFloat(document.getElementById("zoom").value);
+      const thresholds = parseInt(document.getElementById("detail").value);
 
-    ctx.clearRect(0, 0, width, height);
-
-    const resolution = 4; // pixel block size
-
-    for (let y = 0; y < height; y += resolution) {
-      for (let x = 0; x < width; x += resolution) {
-        const val = simplex.noise2D(x * zoom, y * zoom);
-        const normalized = (val + 1) / 2; // [0,1]
-        const band = Math.floor(normalized * levels) / levels; // bucket into contour bands
-        const gray = Math.floor(band * 255);
-
-        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
-        ctx.fillRect(x, y, resolution, resolution);
+      const values = new Float32Array(width * height);
+      let k = 0;
+      for (let j = 0; j < height; ++j) {
+        for (let i = 0; i < width; ++i, ++k) {
+          const v = simplex.noise2D(i * zoom, j * zoom);
+          values[k] = (v + 1) / 2;
+        }
       }
+
+      const contours = d3.contours()
+        .size([width, height])
+        .thresholds(thresholds)
+        (values);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "white";
+      ctx.lineWidth = 1;
+
+      const scaleX = canvas.width / width;
+      const scaleY = canvas.height / height;
+
+      contours.forEach(c => {
+        ctx.beginPath();
+        d3.geoPath(null, ctx).projection({
+          stream: s => ({
+            point(x, y) { s.point(x * scaleX, y * scaleY); },
+            lineStart: () => s.lineStart(),
+            lineEnd: () => s.lineEnd(),
+            polygonStart: () => s.polygonStart(),
+            polygonEnd: () => s.polygonEnd()
+          })
+        })(c);
+        ctx.stroke();
+      });
     }
-  }
 
-  function download() {
-    const link = document.createElement('a');
-    link.download = 'contour_map.png';
-    link.href = canvas.toDataURL();
-    link.click();
-  }
+    function download() {
+      const link = document.createElement("a");
+      link.download = "contour_map.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
 
-  generate();
-</script>
+    generate();
+  </script>
 </body>
 </html>
