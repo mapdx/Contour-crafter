@@ -159,51 +159,52 @@
     }
   </script>
 
-  <!-- Contour Rendering Script -->
+  <!-- D3 + Canvas Rendering Script -->
   <script>
     const canvas = document.getElementById("contourCanvas");
     const ctx = canvas.getContext("2d");
     const simplex = new SimplexNoise();
 
     function generate() {
-      const width = 128;
-      const height = 128;
+      const gridW = 128;
+      const gridH = 128;
       const zoom = parseFloat(document.getElementById("zoom").value);
       const thresholds = parseInt(document.getElementById("detail").value);
+      const values = new Float32Array(gridW * gridH);
 
-      const values = new Float32Array(width * height);
       let k = 0;
-      for (let j = 0; j < height; ++j) {
-        for (let i = 0; i < width; ++i, ++k) {
-          const v = simplex.noise2D(i * zoom, j * zoom);
+      for (let y = 0; y < gridH; y++) {
+        for (let x = 0; x < gridW; x++, k++) {
+          const v = simplex.noise2D(x * zoom, y * zoom);
           values[k] = (v + 1) / 2;
         }
       }
 
       const contours = d3.contours()
-        .size([width, height])
-        .thresholds(thresholds)
-        (values);
+        .size([gridW, gridH])
+        .thresholds(thresholds)(values);
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.strokeStyle = "white";
       ctx.lineWidth = 1;
 
-      const scaleX = canvas.width / width;
-      const scaleY = canvas.height / height;
+      const scaleX = canvas.width / gridW;
+      const scaleY = canvas.height / gridH;
 
-      contours.forEach(c => {
-        ctx.beginPath();
-        d3.geoPath(null, ctx).projection({
-          stream: s => ({
-            point(x, y) { s.point(x * scaleX, y * scaleY); },
-            lineStart: () => s.lineStart(),
-            lineEnd: () => s.lineEnd(),
-            polygonStart: () => s.polygonStart(),
-            polygonEnd: () => s.polygonEnd()
-          })
-        })(c);
-        ctx.stroke();
+      contours.forEach(contour => {
+        contour.coordinates.forEach(polygon => {
+          polygon.forEach(ring => {
+            ctx.beginPath();
+            ring.forEach(([x, y], i) => {
+              const px = x * scaleX;
+              const py = y * scaleY;
+              if (i === 0) ctx.moveTo(px, py);
+              else ctx.lineTo(px, py);
+            });
+            ctx.closePath();
+            ctx.stroke();
+          });
+        });
       });
     }
 
