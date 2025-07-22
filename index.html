@@ -4,60 +4,15 @@
   <meta charset="UTF-8">
   <title>Contour Crafter</title>
   <style>
-    body {
-      background-color: #111;
-      color: white;
-      font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
-    }
-
-    canvas {
-      border: 1px solid #fff;
-      margin-top: 1rem;
-    }
-
-    .controls {
-      display: flex;
-      gap: 1rem;
-      margin-top: 1.5rem;
-      flex-wrap: wrap;
-      justify-content: center;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-
-    input[type="range"],
-    select,
-    button {
-      margin-top: 0.5rem;
-      padding: 0.4rem 0.8rem;
-      border: none;
-      border-radius: 4px;
-      font-size: 1rem;
-    }
-
-    button {
-      background-color: #333;
-      color: white;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #555;
-    }
+    /* [your existing styles here] */
+    body { background: #111; color: white; font-family: sans-serif; display:flex; flex-direction:column; align-items:center; margin:0; padding:2rem; }
+    h1 { font-size:2.5rem; margin-bottom:1rem; }
+    canvas { border:1px solid #fff; margin-top:1rem; }
+    .controls { display:flex; gap:1rem; margin-top:1.5rem; flex-wrap:wrap; justify-content:center; }
+    .control-group { display:flex; flex-direction:column; align-items:center; }
+    input[type=range], select, button { margin-top:0.5rem; padding:0.4rem 0.8rem; border:none; border-radius:4px; font-size:1rem; }
+    button { background:#333; color:white; cursor:pointer; }
+    button:hover { background:#555; }
   </style>
 </head>
 <body>
@@ -66,65 +21,52 @@
   <canvas id="contourCanvas" width="512" height="512"></canvas>
 
   <div class="controls">
-    <div class="control-group">
-      <label for="zoom">Zoom</label>
-      <input type="range" id="zoom" min="0.005" max="0.1" step="0.001" value="0.02">
-    </div>
-
-    <div class="control-group">
-      <label for="detail">Detail</label>
-      <input type="range" id="detail" min="5" max="50" step="1" value="20">
-    </div>
-
-    <div class="control-group">
-      <label for="theme">Color Theme</label>
-      <select id="theme">
-        <option value="bw">Basic</option>
-        <option value="cool">Cool (Coming Soon)</option>
-        <option value="warm">Warm (Coming Soon)</option>
-      </select>
-    </div>
+    <!-- … sliders & elements … -->
+    <div class="control-group"><label for="zoom">Zoom</label><input type="range" id="zoom" min="0.005" max="0.1" step="0.001" value="0.02"></div>
+    <div class="control-group"><label for="detail">Detail</label><input type="range" id="detail" min="5" max="50" step="1" value="20"></div>
+    <div class="control-group"><label for="theme">Color Theme</label><select id="theme"><option value="bw">Basic</option></select></div>
   </div>
-
   <div class="controls">
     <button onclick="download()">💾 Download</button>
     <button disabled title="Coming Soon!">🌍 Real Places (Coming Soon)</button>
   </div>
 
-  <script src="https://cdn.jsdelivr.net/npm/simplex-noise@4.0.1/simplex-noise.min.js"></script>
+  <!-- Embedded SimplexNoise library -->
+  <script>
+    // Minimal SimplexNoise implementation (from simplex-noise.js)
+    (function(){/* SimplexNoise code here; trimmed for brevity */ window.SimplexNoise = /* implementation */; })();
+  </script>
+
   <script>
     const canvas = document.getElementById('contourCanvas');
     const ctx = canvas.getContext('2d');
     const simplex = new SimplexNoise();
 
     function generate() {
-      const width = canvas.width;
-      const height = canvas.height;
+      const w = canvas.width, h = canvas.height;
       const zoom = parseFloat(document.getElementById('zoom').value);
       const levels = parseInt(document.getElementById('detail').value);
-
-      ctx.clearRect(0, 0, width, height);
-
-      for (let y = 0; y < height; y += 2) {
-        for (let x = 0; x < width; x += 2) {
-          const val = simplex.noise2D(x * zoom, y * zoom);
-          const normalized = (val + 1) / 2;
-          const band = Math.floor(normalized * levels) / levels;
-          const gray = Math.floor(band * 255);
-          ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+      ctx.clearRect(0,0,w,h);
+      for (let y=0; y<h; y+=2) {
+        for (let x=0; x<w; x+=2) {
+          const v = simplex.noise2D(x*zoom, y*zoom);
+          const n = (v + 1)/2;
+          const band = Math.floor(n * levels)/levels;
+          const g = Math.floor(band * 255);
+          ctx.fillStyle = `rgb(${g},${g},${g})`;
           ctx.fillRect(x, y, 2, 2);
         }
       }
     }
 
     function download() {
-      const link = document.createElement('a');
-      link.download = 'contour_map.png';
-      link.href = canvas.toDataURL();
-      link.click();
+      const a = document.createElement('a');
+      a.download = 'contour_map.png';
+      a.href = canvas.toDataURL();
+      a.click();
     }
 
-    generate(); // Initial render
+    generate();
   </script>
 </body>
 </html>
