@@ -61,11 +61,12 @@
     }
   </style>
 
-  <!-- D3 Contour Library -->
-<script src="https://d3js.org/d3.v7.min.js"></script>
+  <!-- Full D3 Library -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <h1>Contour Crafter</h1>
+
   <button onclick="generate()">🎲 Generate New Map</button>
   <canvas id="contourCanvas" width="512" height="512"></canvas>
 
@@ -76,15 +77,13 @@
     </div>
 
     <div class="control-group">
-      <label for="detail">Detail</label>
+      <label for="detail">Contour Lines</label>
       <input type="range" id="detail" min="5" max="50" step="1" value="15">
     </div>
 
     <div class="control-group">
-      <label for="theme">Color Theme</label>
-      <select id="theme">
-        <option value="bw">Basic</option>
-      </select>
+      <label for="octaves">Smoothing</label>
+      <input type="range" id="octaves" min="1" max="5" step="1" value="3">
     </div>
   </div>
 
@@ -159,24 +158,40 @@
     }
   </script>
 
-  <!-- D3 + Canvas Rendering Script -->
+  <!-- Render Logic -->
   <script>
     const canvas = document.getElementById("contourCanvas");
     const ctx = canvas.getContext("2d");
     const simplex = new SimplexNoise();
+
+    function fractalNoise(x, y, zoom, octaves) {
+      let total = 0;
+      let frequency = 1;
+      let amplitude = 1;
+      let maxValue = 0;
+
+      for (let i = 0; i < octaves; i++) {
+        total += simplex.noise2D(x * zoom * frequency, y * zoom * frequency) * amplitude;
+        maxValue += amplitude;
+        amplitude *= 0.5;
+        frequency *= 2;
+      }
+
+      return (total / maxValue + 1) / 2; // Normalize to [0, 1]
+    }
 
     function generate() {
       const gridW = 128;
       const gridH = 128;
       const zoom = parseFloat(document.getElementById("zoom").value);
       const thresholds = parseInt(document.getElementById("detail").value);
-      const values = new Float32Array(gridW * gridH);
+      const octaves = parseInt(document.getElementById("octaves").value);
 
+      const values = new Float32Array(gridW * gridH);
       let k = 0;
       for (let y = 0; y < gridH; y++) {
         for (let x = 0; x < gridW; x++, k++) {
-          const v = simplex.noise2D(x * zoom, y * zoom);
-          values[k] = (v + 1) / 2;
+          values[k] = fractalNoise(x, y, zoom, octaves);
         }
       }
 
