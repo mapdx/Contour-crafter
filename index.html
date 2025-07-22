@@ -161,38 +161,42 @@
   </script>
 
   <!-- Main logic -->
-  <script>
-    const canvas = document.getElementById("contourCanvas");
-    const ctx = canvas.getContext("2d");
-    const simplex = new SimplexNoise();
+<script>
+  const canvas = document.getElementById("contourCanvas");
+  const ctx = canvas.getContext("2d");
+  const simplex = new SimplexNoise();
 
-    function generate() {
-      const width = canvas.width;
-      const height = canvas.height;
-      const zoom = parseFloat(document.getElementById('zoom').value);
-      const levels = parseInt(document.getElementById('detail').value);
+  function generate() {
+    const width = canvas.width;
+    const height = canvas.height;
+    const zoom = parseFloat(document.getElementById('zoom').value);
+    const levels = parseInt(document.getElementById('detail').value);
 
-      ctx.clearRect(0, 0, width, height);
-      for (let y = 0; y < height; y += 2) {
-        for (let x = 0; x < width; x += 2) {
-          const val = simplex.noise2D(x * zoom, y * zoom);
-          const normalized = (val + 1) / 2;
-          const band = Math.floor(normalized * levels) / levels;
-          const gray = Math.floor(band * 255);
-          ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
-          ctx.fillRect(x, y, 2, 2);
-        }
+    ctx.clearRect(0, 0, width, height);
+
+    const resolution = 4; // pixel block size
+
+    for (let y = 0; y < height; y += resolution) {
+      for (let x = 0; x < width; x += resolution) {
+        const val = simplex.noise2D(x * zoom, y * zoom);
+        const normalized = (val + 1) / 2; // [0,1]
+        const band = Math.floor(normalized * levels) / levels; // bucket into contour bands
+        const gray = Math.floor(band * 255);
+
+        ctx.fillStyle = `rgb(${gray}, ${gray}, ${gray})`;
+        ctx.fillRect(x, y, resolution, resolution);
       }
     }
+  }
 
-    function download() {
-      const link = document.createElement('a');
-      link.download = 'contour_map.png';
-      link.href = canvas.toDataURL();
-      link.click();
-    }
+  function download() {
+    const link = document.createElement('a');
+    link.download = 'contour_map.png';
+    link.href = canvas.toDataURL();
+    link.click();
+  }
 
-    generate();
-  </script>
+  generate();
+</script>
 </body>
 </html>
