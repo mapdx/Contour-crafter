@@ -180,9 +180,13 @@
 
         const result = await response.json();
 
-        if (!result.results) {
-          throw new Error("No data returned from elevation service");
-        }
+        if (!Array.isArray(result.results) || result.results.length === 0) {
+          throw new Error("No elevation data returned.");
+}
+
+const raw = result.results.map(r =>
+  typeof r.elevation === 'number' ? r.elevation : 0
+);
 
         const raw = result.results.map(r => r.elevation ?? 0);
         const max = Math.max(...raw);
