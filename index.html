@@ -55,6 +55,7 @@
       padding: 5px;
       font-size: 1em;
       margin: 8px;
+      width: 280px;
     }
   </style>
 </head>
@@ -80,7 +81,7 @@
   </div>
 
   <div class="controls">
-    <input type="text" id="location" placeholder="Enter a place or coordinates (lat, lon)" />
+    <input type="text" id="location" placeholder="Enter lat, lon (e.g. 46.85, -121.76)" />
     <button onclick="fetchRealData()">🌍 Use Real Elevation</button>
     <button onclick="download()">💾 Download</button>
   </div>
@@ -88,42 +89,48 @@
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
     let useRealData = false;
+    let realElevationValue = null;
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
-    // Simple noise function
     function pseudoNoise(x, y) {
       return Math.sin(x * 2 + Math.cos(y * 3)) * Math.cos(y * 2 + Math.sin(x * 3));
     }
 
-    // Fetch real elevation data based on coordinates or location
     async function fetchRealData() {
-      const location = document.getElementById("location").value;
-      const [lat, lon] = location.split(",").map(coord => parseFloat(coord.trim()));
+      const input = document.getElementById("location").value.trim();
+      const coordMatch = input.match(/^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$/);
 
-      if (!lat || !lon) {
-        alert("Invalid coordinates. Please enter valid lat, lon.");
+      if (!coordMatch) {
+        alert("Please enter valid coordinates in the format: lat, lon");
         return;
       }
 
+      const lat = parseFloat(coordMatch[1]);
+      const lon = parseFloat(coordMatch[3]);
+
       const url = `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`;
+
       try {
         const response = await fetch(url);
         const data = await response.json();
-        if (data.results && data.results.length > 0) {
-          const elevation = data.results[0].elevation;
-          alert(`Elevation at ${lat}, ${lon}: ${elevation} meters`);
-          useRealData = true;
-          generate(); // Re-generate the map with real data
-        } else {
-          alert("Could not fetch elevation data.");
+
+        if (!data.results || !data.results[0] || typeof data.results[0].elevation !== "number") {
+          throw new Error("Invalid elevation response");
         }
-      } catch (error) {
-        alert("Error fetching elevation data.");
+
+        realElevationValue = data.results[0].elevation;
+        useRealData = true;
+        alert(`Elevation at ${lat}, ${lon} is approximately ${realElevationValue} meters`);
+        generate();
+      } catch (err) {
+        alert("Could not fetch elevation data. Falling back to noise.");
+        useRealData = false;
+        realElevationValue = null;
+        generate();
       }
     }
 
-    // Generate noise or real data contours
     function generateNoise(width, height, scale, octaves) {
       const data = [];
       for (let y = 0; y < height; y++) {
@@ -148,7 +155,20 @@
       return data;
     }
 
-    // Generate the contours
+    function generateRealData(width, height) {
+      const data = [];
+      const baseElevation = realElevationValue ?? 1000;
+      for (let y = 0; y < height; y++) {
+        const row = [];
+        for (let x = 0; x < width; x++) {
+          const noise = pseudoNoise(x * 0.01, y * 0.01);
+          row.push((noise + 1) / 2 + baseElevation / 10000); // Simulate terrain bumping
+        }
+        data.push(row);
+      }
+      return data;
+    }
+
     function drawContours(data, levels) {
       const width = data[0].length;
       const height = data.length;
@@ -158,7 +178,7 @@
         (data.flat());
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#111";
+      ctx.fillStyle = "#fff";
       ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = "black";
       ctx.lineWidth = 0.5;
@@ -170,19 +190,18 @@
       });
     }
 
-    // Main function to decide noise vs real data
     function generate() {
       const scale = parseFloat(document.getElementById("scale").value);
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
 
-      if (useRealData) {
-        // For now, this only generates based on real data, modify later to fetch data dynamically
-        alert("Real data generation feature coming soon!");
-        return;
+      let data;
+      if (useRealData && realElevationValue !== null) {
+        data = generateRealData(512, 512);
+      } else {
+        data = generateNoise(512, 512, scale, smoothing);
       }
 
-      const data = generateNoise(512, 512, scale, smoothing); // Use larger canvas
       drawContours(data, levels);
     }
 
