@@ -15,17 +15,16 @@ export async function handler(event) {
       body: JSON.stringify({ locations })
     });
 
-    const data = await response.json();
+    const data = await response.json(); // Already parsed
 
+    // ✅ Return raw JSON — not stringified again
     return {
       statusCode: 200,
       headers: {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        results: data.results
-      })
+      body: JSON.stringify(data) // Just pass along OpenTopoData response
     };
   } catch (error) {
     return {
