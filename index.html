@@ -2,230 +2,145 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Contour Crafter</title>
   <style>
     body {
-      background-color: #111;
+      margin: 0;
+      background: #111;
       color: white;
       font-family: sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      margin: 0;
-      padding: 2rem;
-    }
-
-    h1 {
-      font-size: 2.5rem;
-      margin-bottom: 1rem;
+      text-align: center;
+      padding: 20px;
     }
 
     canvas {
-      border: 1px solid #fff;
-      margin-top: 1rem;
-      background-color: black;
+      border: 1px solid #333;
+      background: white;
+      max-width: 90vw;
+      height: auto;
     }
 
     .controls {
+      margin-top: 10px;
+    }
+
+    .slider-container {
       display: flex;
-      gap: 1rem;
-      margin-top: 1.5rem;
-      flex-wrap: wrap;
       justify-content: center;
-    }
-
-    .control-group {
-      display: flex;
-      flex-direction: column;
       align-items: center;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-top: 10px;
     }
 
-    input[type="range"],
-    select,
-    button {
-      margin-top: 0.5rem;
-      padding: 0.4rem 0.8rem;
-      border: none;
+    label {
+      font-size: 0.9em;
+    }
+
+    button, select {
+      margin: 8px;
+      padding: 8px 12px;
+      font-size: 1em;
       border-radius: 4px;
-      font-size: 1rem;
-    }
-
-    button {
-      background-color: #333;
-      color: white;
+      border: none;
       cursor: pointer;
     }
 
     button:hover {
-      background-color: #555;
+      background: #444;
     }
   </style>
-
-  <!-- Full D3 Library -->
-  <script src="https://d3js.org/d3.v7.min.js"></script>
 </head>
 <body>
   <h1>Contour Crafter</h1>
-
   <button onclick="generate()">🎲 Generate New Map</button>
-  <canvas id="contourCanvas" width="512" height="512"></canvas>
+  <div>
+    <canvas id="canvas" width="512" height="512"></canvas>
+  </div>
 
-  <div class="controls">
-    <div class="control-group">
-      <label for="zoom">Zoom</label>
-      <input type="range" id="zoom" min="0.005" max="0.05" step="0.001" value="0.015">
-    </div>
+  <div class="slider-container">
+    <label>Zoom
+      <input type="range" id="zoom" min="1" max="10" step="0.1" value="5" />
+    </label>
 
-    <div class="control-group">
-      <label for="detail">Contour Lines</label>
-      <input type="range" id="detail" min="5" max="50" step="1" value="15">
-    </div>
+    <label>Contour Lines
+      <input type="range" id="levels" min="5" max="50" step="1" value="20" />
+    </label>
 
-    <div class="control-group">
-      <label for="octaves">Smoothing</label>
-      <input type="range" id="octaves" min="1" max="5" step="1" value="3">
-    </div>
+    <label>Smoothing
+      <input type="range" id="smoothing" min="1" max="6" step="1" value="3" />
+    </label>
   </div>
 
   <div class="controls">
     <button onclick="download()">💾 Download</button>
-    <button disabled title="Coming Soon!">🌍 Real Places (Coming Soon)</button>
+    <button disabled>🌍 Real Places (Coming Soon)</button>
   </div>
 
-  <!-- Simplex Noise Generator -->
+  <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
-    class SimplexNoise {
-      constructor(random = Math.random) {
-        this.grad3 = [
-          [1,1,0],[-1,1,0],[1,-1,0],[-1,-1,0],
-          [1,0,1],[-1,0,1],[1,0,-1],[-1,0,-1],
-          [0,1,1],[0,-1,1],[0,1,-1],[0,-1,-1]
-        ];
-        this.p = [];
-        for (let i = 0; i < 256; i++) {
-          this.p[i] = Math.floor(random() * 256);
-        }
-        this.perm = [];
-        for (let i = 0; i < 512; i++) {
-          this.perm[i] = this.p[i & 255];
-        }
-      }
-
-      dot(g, x, y) {
-        return g[0]*x + g[1]*y;
-      }
-
-      noise2D(xin, yin) {
-        const F2 = 0.5 * (Math.sqrt(3.0) - 1.0);
-        const G2 = (3.0 - Math.sqrt(3.0)) / 6.0;
-
-        let n0, n1, n2;
-        const s = (xin + yin) * F2;
-        const i = Math.floor(xin + s);
-        const j = Math.floor(yin + s);
-        const t = (i + j) * G2;
-        const X0 = i - t;
-        const Y0 = j - t;
-        const x0 = xin - X0;
-        const y0 = yin - Y0;
-
-        let i1, j1;
-        if (x0 > y0) { i1 = 1; j1 = 0; }
-        else { i1 = 0; j1 = 1; }
-
-        const x1 = x0 - i1 + G2;
-        const y1 = y0 - j1 + G2;
-        const x2 = x0 - 1.0 + 2.0 * G2;
-        const y2 = y0 - 1.0 + 2.0 * G2;
-
-        const ii = i & 255;
-        const jj = j & 255;
-        const gi0 = this.perm[ii + this.perm[jj]] % 12;
-        const gi1 = this.perm[ii + i1 + this.perm[jj + j1]] % 12;
-        const gi2 = this.perm[ii + 1 + this.perm[jj + 1]] % 12;
-
-        let t0 = 0.5 - x0*x0 - y0*y0;
-        n0 = t0 < 0 ? 0 : (t0 ** 4) * this.dot(this.grad3[gi0], x0, y0);
-
-        let t1 = 0.5 - x1*x1 - y1*y1;
-        n1 = t1 < 0 ? 0 : (t1 ** 4) * this.dot(this.grad3[gi1], x1, y1);
-
-        let t2 = 0.5 - x2*x2 - y2*y2;
-        n2 = t2 < 0 ? 0 : (t2 ** 4) * this.dot(this.grad3[gi2], x2, y2);
-
-        return 70.0 * (n0 + n1 + n2);
-      }
-    }
-  </script>
-
-  <!-- Render Logic -->
-  <script>
-    const canvas = document.getElementById("contourCanvas");
+    const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    const simplex = new SimplexNoise();
 
-    function fractalNoise(x, y, zoom, octaves) {
-      let total = 0;
-      let frequency = 1;
-      let amplitude = 1;
-      let maxValue = 0;
-
-      for (let i = 0; i < octaves; i++) {
-        total += simplex.noise2D(x * zoom * frequency, y * zoom * frequency) * amplitude;
-        maxValue += amplitude;
-        amplitude *= 0.5;
-        frequency *= 2;
+    function generateNoise(width, height, scale, octaves) {
+      const noise = [];
+      for (let y = 0; y < height; y++) {
+        const row = [];
+        for (let x = 0; x < width; x++) {
+          let value = 0;
+          let amplitude = 1;
+          let frequency = 1;
+          for (let o = 0; o < octaves; o++) {
+            const nx = x / scale * frequency;
+            const ny = y / scale * frequency;
+            value += Math.sin(nx * 2 * Math.PI) * Math.sin(ny * 2 * Math.PI) * amplitude;
+            amplitude *= 0.5;
+            frequency *= 2;
+          }
+          row.push(value);
+        }
+        noise.push(row);
       }
+      return noise;
+    }
 
-      return (total / maxValue + 1) / 2; // Normalize to [0, 1]
+    function drawContours(data, levels) {
+      const width = data[0].length;
+      const height = data.length;
+
+      const contours = d3.contours()
+        .size([width, height])
+        .thresholds(levels)
+        (data.flat());
+
+      const path = d3.geoPath(null, ctx);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = "black";
+
+      for (const contour of contours) {
+        ctx.beginPath();
+        path(contour);
+        ctx.stroke();
+      }
     }
 
     function generate() {
-      const gridW = 128;
-      const gridH = 128;
       const zoom = parseFloat(document.getElementById("zoom").value);
-      const thresholds = parseInt(document.getElementById("detail").value);
-      const octaves = parseInt(document.getElementById("octaves").value);
+      const levels = parseInt(document.getElementById("levels").value);
+      const smoothing = parseInt(document.getElementById("smoothing").value);
 
-      const values = new Float32Array(gridW * gridH);
-      let k = 0;
-      for (let y = 0; y < gridH; y++) {
-        for (let x = 0; x < gridW; x++, k++) {
-          values[k] = fractalNoise(x, y, zoom, octaves);
-        }
-      }
+      const scale = 100 / zoom;
+      const octaves = smoothing;
 
-      const contours = d3.contours()
-        .size([gridW, gridH])
-        .thresholds(thresholds)(values);
-
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "white";
-      ctx.lineWidth = 1;
-
-      const scaleX = canvas.width / gridW;
-      const scaleY = canvas.height / gridH;
-
-      contours.forEach(contour => {
-        contour.coordinates.forEach(polygon => {
-          polygon.forEach(ring => {
-            ctx.beginPath();
-            ring.forEach(([x, y], i) => {
-              const px = x * scaleX;
-              const py = y * scaleY;
-              if (i === 0) ctx.moveTo(px, py);
-              else ctx.lineTo(px, py);
-            });
-            ctx.closePath();
-            ctx.stroke();
-          });
-        });
-      });
+      const noiseData = generateNoise(canvas.width, canvas.height, scale, octaves);
+      drawContours(noiseData, levels);
     }
 
     function download() {
       const link = document.createElement("a");
-      link.download = "contour_map.png";
+      link.download = "contour.png";
       link.href = canvas.toDataURL();
       link.click();
     }
