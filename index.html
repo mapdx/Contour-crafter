@@ -79,11 +79,11 @@
   </div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/open-simplex-noise@2.5.0/lib/open-simplex-noise.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/open-simplex-noise@2.5.0/open-simplex-noise.min.js"></script>
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    const noiseGenerator = openSimplexNoise(Date.now()); // random seed
+    const noiseGenerator = new openSimplexNoise(Date.now());
 
     function generateNoise(width, height, scale, octaves) {
       const noise = [];
