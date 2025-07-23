@@ -181,4 +181,39 @@
         const result = await response.json();
 
         if (!result.results) {
-          throw new Error
+          throw new Error("No data returned from elevation service");
+        }
+
+        const raw = result.results.map(r => r.elevation ?? 0);
+        const max = Math.max(...raw);
+        const min = Math.min(...raw);
+
+        if (max === min) {
+          alert("Not enough elevation variation at this location.");
+          return;
+        }
+
+        const normalized = raw.map(v => (v - min) / (max - min));
+        const data = [];
+        for (let y = 0; y < gridSize; y++) {
+          data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
+        }
+
+        drawContours(data, parseInt(document.getElementById("levels").value));
+      } catch (err) {
+        alert("Failed to fetch elevation data.");
+        console.error(err);
+      }
+    }
+
+    function download() {
+      const link = document.createElement("a");
+      link.download = "contour-map.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    generate(); // initial render
+  </script>
+</body>
+</html>
