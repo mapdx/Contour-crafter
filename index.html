@@ -172,42 +172,42 @@
       }
 
       try {
-        const response = await fetch("/.netlify/functions/opentopo-proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locations })
-        });
+  const response = await fetch("/.netlify/functions/opentopo-proxy", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ locations })
+  });
 
-        const result = await response.json();
+  const result = await response.json();
 
-        if (!Array.isArray(result.results) || result.results.length === 0) {
-          throw new Error("No elevation data returned.");
+  if (!Array.isArray(result.results) || result.results.length === 0) {
+    throw new Error("No elevation data returned.");
+  }
+
+  const elevations = result.results.map(r =>
+    typeof r.elevation === "number" ? r.elevation : 0
+  );
+
+  const max = Math.max(...elevations);
+  const min = Math.min(...elevations);
+
+  if (max === min) {
+    alert("Not enough elevation variation at this location.");
+    return;
+  }
+
+  const normalized = elevations.map(v => (v - min) / (max - min));
+  const data = [];
+
+  for (let y = 0; y < gridSize; y++) {
+    data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
+  }
+
+  drawContours(data, parseInt(document.getElementById("levels").value));
+} catch (err) {
+  alert("Failed to fetch elevation data.");
+  console.error(err);
 }
-
-const raw = result.results.map(r =>
-  typeof r.elevation === 'number' ? r.elevation : 0
-);
-
-        const raw = result.results.map(r => r.elevation ?? 0);
-        const max = Math.max(...raw);
-        const min = Math.min(...raw);
-
-        if (max === min) {
-          alert("Not enough elevation variation at this location.");
-          return;
-        }
-
-        const normalized = raw.map(v => (v - min) / (max - min));
-        const data = [];
-        for (let y = 0; y < gridSize; y++) {
-          data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
-        }
-
-        drawContours(data, parseInt(document.getElementById("levels").value));
-      } catch (err) {
-        alert("Failed to fetch elevation data.");
-        console.error(err);
-      }
     }
 
     function download() {
