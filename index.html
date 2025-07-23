@@ -180,36 +180,5 @@
 
         const result = await response.json();
 
-        if (!result.results || result.results.length !== locations.length) {
-          throw new Error("Unexpected response");
-        }
-
-        const raw = result.results.map(r => r.elevation ?? 0);
-        const max = Math.max(...raw);
-        const min = Math.min(...raw);
-
-        const normalized = raw.map(v => (v - min) / (max - min));
-
-        const data = [];
-        for (let y = 0; y < gridSize; y++) {
-          data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
-        }
-
-        drawContours(data, parseInt(document.getElementById("levels").value));
-      } catch (err) {
-        alert("Failed to fetch elevation data.");
-        console.error(err);
-      }
-    }
-
-    function download() {
-      const link = document.createElement("a");
-      link.download = "contour-map.png";
-      link.href = canvas.toDataURL();
-      link.click();
-    }
-
-    generate();
-  </script>
-</body>
-</html>
+        if (!result.results) {
+          throw new Error
