@@ -83,7 +83,7 @@
   <script>
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
-    const noiseGenerator = new openSimplexNoise(Date.now());
+    const noiseGenerator = new OpenSimplexNoise(Date.now());
 
     function generateNoise(width, height, scale, octaves) {
       const noise = [];
