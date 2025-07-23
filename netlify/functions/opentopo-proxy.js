@@ -15,7 +15,7 @@ export async function handler(event) {
       body: JSON.stringify({ locations })
     });
 
-    const data = await response.text();
+    const data = await response.json(); // ✅ FIXED: properly parse JSON
 
     return {
       statusCode: 200,
@@ -23,7 +23,7 @@ export async function handler(event) {
         'Access-Control-Allow-Origin': '*',
         'Content-Type': 'application/json'
       },
-      body: data
+      body: JSON.stringify(data) // ✅ Return parsed JSON
     };
   } catch (error) {
     return {
