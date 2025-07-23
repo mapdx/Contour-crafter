@@ -50,18 +50,24 @@
     button:hover {
       background: #444;
     }
+
+    input[type="text"] {
+      padding: 5px;
+      font-size: 1em;
+      margin: 8px;
+    }
   </style>
 </head>
 <body>
   <h1>Contour Crafter</h1>
   <button onclick="generate()">🎲 Generate New Map</button>
   <div>
-    <canvas id="canvas" width="256" height="256"></canvas>
+    <canvas id="canvas" width="512" height="512"></canvas>
   </div>
 
   <div class="slider-container">
     <label>Noise Scale
-      <input type="range" id="scale" min="0.5" max="3" step="0.1" value="1.2" />
+      <input type="range" id="scale" min="0.5" max="3" step="0.1" value="1.5" />
     </label>
 
     <label>Contour Lines
@@ -74,33 +80,66 @@
   </div>
 
   <div class="controls">
+    <input type="text" id="location" placeholder="Enter a place or coordinates (lat, lon)" />
+    <button onclick="fetchRealData()">🌍 Use Real Elevation</button>
     <button onclick="download()">💾 Download</button>
-    <button disabled>🌍 Real Places (Coming Soon)</button>
   </div>
 
   <script src="https://d3js.org/d3.v7.min.js"></script>
   <script>
-    // Simple fake "Perlin" function
+    let useRealData = false;
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    // Simple noise function
     function pseudoNoise(x, y) {
       return Math.sin(x * 2 + Math.cos(y * 3)) * Math.cos(y * 2 + Math.sin(x * 3));
     }
 
+    // Fetch real elevation data based on coordinates or location
+    async function fetchRealData() {
+      const location = document.getElementById("location").value;
+      const [lat, lon] = location.split(",").map(coord => parseFloat(coord.trim()));
+
+      if (!lat || !lon) {
+        alert("Invalid coordinates. Please enter valid lat, lon.");
+        return;
+      }
+
+      const url = `https://api.open-elevation.com/api/v1/lookup?locations=${lat},${lon}`;
+      try {
+        const response = await fetch(url);
+        const data = await response.json();
+        if (data.results && data.results.length > 0) {
+          const elevation = data.results[0].elevation;
+          alert(`Elevation at ${lat}, ${lon}: ${elevation} meters`);
+          useRealData = true;
+          generate(); // Re-generate the map with real data
+        } else {
+          alert("Could not fetch elevation data.");
+        }
+      } catch (error) {
+        alert("Error fetching elevation data.");
+      }
+    }
+
+    // Generate noise or real data contours
     function generateNoise(width, height, scale, octaves) {
       const data = [];
       for (let y = 0; y < height; y++) {
         const row = [];
         for (let x = 0; x < width; x++) {
           let value = 0;
-          let freq = 1;
-          let amp = 1;
+          let amplitude = 1;
+          let frequency = 1;
           let max = 0;
           for (let o = 0; o < octaves; o++) {
-            const nx = (x / width) * scale * freq;
-            const ny = (y / height) * scale * freq;
-            value += pseudoNoise(nx, ny) * amp;
-            max += amp;
-            amp *= 0.5;
-            freq *= 2;
+            const nx = (x / width) * scale * frequency;
+            const ny = (y / height) * scale * frequency;
+            value += pseudoNoise(nx, ny) * amplitude;
+            max += amplitude;
+            amplitude *= 0.5;
+            frequency *= 2;
           }
           row.push((value / max + 1) / 2); // normalize to 0–1
         }
@@ -109,41 +148,45 @@
       return data;
     }
 
+    // Generate the contours
     function drawContours(data, levels) {
       const width = data[0].length;
       const height = data.length;
-
       const contours = d3.contours()
         .size([width, height])
         .thresholds(levels)
         (data.flat());
 
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      const path = d3.geoPath(null, ctx);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff";
+      ctx.fillStyle = "#111";
       ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = "black";
       ctx.lineWidth = 0.5;
 
       contours.forEach(contour => {
         ctx.beginPath();
-        path(contour);
+        d3.geoPath(null, ctx)(contour);
         ctx.stroke();
       });
     }
 
+    // Main function to decide noise vs real data
     function generate() {
       const scale = parseFloat(document.getElementById("scale").value);
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
-      const data = generateNoise(256, 256, scale, smoothing);
+
+      if (useRealData) {
+        // For now, this only generates based on real data, modify later to fetch data dynamically
+        alert("Real data generation feature coming soon!");
+        return;
+      }
+
+      const data = generateNoise(512, 512, scale, smoothing); // Use larger canvas
       drawContours(data, levels);
     }
 
     function download() {
-      const canvas = document.getElementById("canvas");
       const link = document.createElement("a");
       link.download = "contour-map.png";
       link.href = canvas.toDataURL();
