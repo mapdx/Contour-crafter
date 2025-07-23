@@ -56,20 +56,20 @@
   <h1>Contour Crafter</h1>
   <button onclick="generate()">🎲 Generate New Map</button>
   <div>
-    <canvas id="canvas" width="512" height="512"></canvas>
+    <canvas id="canvas" width="256" height="256"></canvas>
   </div>
 
   <div class="slider-container">
-    <label>Zoom
-      <input type="range" id="zoom" min="1" max="10" step="0.1" value="5" />
+    <label>Noise Scale
+      <input type="range" id="scale" min="0.5" max="3" step="0.1" value="1.5" />
     </label>
 
     <label>Contour Lines
-      <input type="range" id="levels" min="5" max="50" step="1" value="20" />
+      <input type="range" id="levels" min="5" max="30" step="1" value="15" />
     </label>
 
     <label>Smoothing
-      <input type="range" id="smoothing" min="1" max="6" step="1" value="3" />
+      <input type="range" id="smoothing" min="1" max="5" step="1" value="3" />
     </label>
   </div>
 
@@ -83,6 +83,10 @@
     const canvas = document.getElementById("canvas");
     const ctx = canvas.getContext("2d");
 
+    function simpleNoise(x, y) {
+      return (Math.sin(x) + Math.cos(y)) * 0.5;
+    }
+
     function generateNoise(width, height, scale, octaves) {
       const noise = [];
       for (let y = 0; y < height; y++) {
@@ -91,14 +95,16 @@
           let value = 0;
           let amplitude = 1;
           let frequency = 1;
+          let max = 0;
           for (let o = 0; o < octaves; o++) {
-            const nx = x / scale * frequency;
-            const ny = y / scale * frequency;
-            value += Math.sin(nx * 2 * Math.PI) * Math.sin(ny * 2 * Math.PI) * amplitude;
+            const nx = (x / width) * scale * frequency * Math.PI * 2;
+            const ny = (y / height) * scale * frequency * Math.PI * 2;
+            value += simpleNoise(nx, ny) * amplitude;
+            max += amplitude;
             amplitude *= 0.5;
             frequency *= 2;
           }
-          row.push(value);
+          row.push(value / max);
         }
         noise.push(row);
       }
@@ -116,31 +122,30 @@
 
       const path = d3.geoPath(null, ctx);
       ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.lineWidth = 0.5;
+      ctx.fillStyle = "#111";
+      ctx.fillRect(0, 0, width, height);
       ctx.strokeStyle = "black";
+      ctx.lineWidth = 0.5;
 
-      for (const contour of contours) {
+      contours.forEach(contour => {
         ctx.beginPath();
         path(contour);
         ctx.stroke();
-      }
+      });
     }
 
     function generate() {
-      const zoom = parseFloat(document.getElementById("zoom").value);
+      const scale = parseFloat(document.getElementById("scale").value);
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
 
-      const scale = 100 / zoom;
-      const octaves = smoothing;
-
-      const noiseData = generateNoise(canvas.width, canvas.height, scale, octaves);
-      drawContours(noiseData, levels);
+      const data = generateNoise(canvas.width, canvas.height, scale, smoothing);
+      drawContours(data, levels);
     }
 
     function download() {
       const link = document.createElement("a");
-      link.download = "contour.png";
+      link.download = "contour-map.png";
       link.href = canvas.toDataURL();
       link.click();
     }
