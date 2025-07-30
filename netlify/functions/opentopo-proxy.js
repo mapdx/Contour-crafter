@@ -8,8 +8,8 @@ export async function handler(event) {
 
   try {
     const { locations } = JSON.parse(event.body);
-
-    const response = await fetch('https://api.opentopodata.org/v1/srtm90m', {
+    
+    const response = await fetch('https://api.opentopodata.org/v1/etopo1';, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ locations })
