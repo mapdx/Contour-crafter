@@ -167,7 +167,7 @@
         for (let x = 0; x < gridSize; x++) {
           const latOffset = lat - (gridSize / 2 - y) * delta;
           const lonOffset = lon - (gridSize / 2 - x) * delta;
-          locations.push(`${latOffset},${lonOffset}`);
+          locations.push({ latitude: latOffset, longitude: lonOffset });
         }
       }
 
