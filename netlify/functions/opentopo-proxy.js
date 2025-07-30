@@ -1,6 +1,6 @@
-const fetch = require('node-fetch');
+const fetch = require("node-fetch");
 
-module.exports.handler = async function (event, context) {
+exports.handler = async function (event, context) {
   try {
     const { locations } = JSON.parse(event.body);
 
@@ -11,29 +11,38 @@ module.exports.handler = async function (event, context) {
       };
     }
 
-    // Create query string
+    // Sanitize and build query string
     const queryString = locations
       .map((loc) => {
-        const [lat, lon] = loc.split(",").map(parseFloat);
+        const parts = loc.split(",");
+        if (parts.length !== 2) return null;
+        const lat = parseFloat(parts[0].trim());
+        const lon = parseFloat(parts[1].trim());
+        if (isNaN(lat) || isNaN(lon)) return null;
         return `${lat},${lon}`;
       })
+      .filter((v) => v !== null)
       .join("|");
 
-    const url = `https://api.opentopodata.org/v1/mapzen?locations=${encodeURIComponent(queryString)}`;
+    const url = `https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(queryString)}`;
 
-    // DEBUG log
-    console.log("Calling URL:", url);
+    console.log("🔍 Fetching from:", url);
 
     const response = await fetch(url);
 
     if (!response.ok) {
-      throw new Error(`OpenTopoData API error: ${response.statusText}`);
+      const text = await response.text();
+      console.error("🌩 OpenTopoData response not ok:", response.status, text);
+      return {
+        statusCode: response.status,
+        body: JSON.stringify({ error: "Failed to fetch from OpenTopoData", detail: text }),
+      };
     }
 
     const result = await response.json();
 
     if (!result.results || result.results.length === 0) {
-      console.log("OpenTopoData result was empty:", result);
+      console.error("⚠️ No elevation results:", JSON.stringify(result));
       return {
         statusCode: 502,
         body: JSON.stringify({ error: "No elevation data returned from API" }),
@@ -45,7 +54,7 @@ module.exports.handler = async function (event, context) {
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("Function error:", error);
+    console.error("🔥 Proxy Error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Internal server error", detail: error.message }),
