@@ -1,39 +1,41 @@
-export async function handler(event) {
-  if (event.httpMethod !== 'POST') {
-    return {
-      statusCode: 405,
-      body: 'Only POST requests allowed'
-    };
-  }
+const fetch = require("node-fetch");
 
+exports.handler = async (event) => {
   try {
     const { locations } = JSON.parse(event.body);
-    
-    const response = await fetch('https://api.opentopodata.org/v1/etopo1';, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+
+    if (!Array.isArray(locations)) {
+      return {
+        statusCode: 400,
+        body: JSON.stringify({ error: "Invalid locations" })
+      };
+    }
+
+    const apiUrl = "https://api.opentopodata.org/v1/etopo1";
+    const response = await fetch(apiUrl, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locations })
     });
 
-    const data = await response.json(); // Already parsed
+    const data = await response.json();
 
-    // ✅ Return raw JSON — not stringified again
+    if (!data || !data.results) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "No data returned from OpenTopoData" })
+      };
+    }
+
     return {
       statusCode: 200,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(data) // Just pass along OpenTopoData response
+      body: JSON.stringify(data)
     };
   } catch (error) {
+    console.error("Function error:", error);
     return {
       statusCode: 500,
-      headers: {
-        'Access-Control-Allow-Origin': '*',
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ error: 'Server error', detail: error.message })
+      body: JSON.stringify({ error: "Server error", details: error.message })
     };
   }
-}
+};
