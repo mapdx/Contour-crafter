@@ -1,52 +1,50 @@
-exports.handler = async (event) => {
+const fetch = require('node-fetch');
+
+module.exports.handler = async function (event, context) {
   try {
     const { locations } = JSON.parse(event.body);
 
-    if (!Array.isArray(locations)) {
+    if (!Array.isArray(locations) || locations.length === 0) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Invalid 'locations' format. Must be an array." })
+        body: JSON.stringify({ error: "No locations provided" }),
       };
     }
 
-    const apiUrl = "https://api.opentopodata.org/v1/etopo1";
+    // Format locations as LAT,LON|LAT,LON|...
+    const queryString = locations
+      .map((loc) => {
+        const [lat, lon] = loc.split(",");
+        return `${parseFloat(lat)},${parseFloat(lon)}`;
+      })
+      .join("|");
 
-    const response = await fetch(apiUrl, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ locations })
-    });
+    const url = `https://api.opentopodata.org/v1/mapzen?locations=${encodeURIComponent(queryString)}`;
 
-    const raw = await response.text(); // ← fetch as text first to inspect
-    console.log("OpenTopoData raw response:", raw);
+    const response = await fetch(url);
 
-    let data;
-    try {
-      data = JSON.parse(raw);
-    } catch (parseError) {
-      return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "Failed to parse OpenTopoData response", raw })
-      };
+    if (!response.ok) {
+      throw new Error(`OpenTopoData API error: ${response.statusText}`);
     }
 
-    if (!data || !Array.isArray(data.results)) {
+    const result = await response.json();
+
+    if (!result.results || result.results.length === 0) {
       return {
-        statusCode: 500,
-        body: JSON.stringify({ error: "No results returned from OpenTopoData", raw })
+        statusCode: 502,
+        body: JSON.stringify({ error: "No elevation data returned from API" }),
       };
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify(data)
+      body: JSON.stringify(result),
     };
-
   } catch (error) {
-    console.error("OpenTopo Proxy Error:", error);
+    console.error("Function error:", error);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Server error", details: error.message })
+      body: JSON.stringify({ error: "Internal server error", detail: error.message }),
     };
   }
 };
