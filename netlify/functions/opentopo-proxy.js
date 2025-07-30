@@ -1,5 +1,3 @@
-const fetch = require("node-fetch");
-
 exports.handler = async (event) => {
   try {
     const { locations } = JSON.parse(event.body);
@@ -7,11 +5,12 @@ exports.handler = async (event) => {
     if (!Array.isArray(locations)) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "Invalid locations" })
+        body: JSON.stringify({ error: "Invalid 'locations' format. Must be an array." })
       };
     }
 
     const apiUrl = "https://api.opentopodata.org/v1/etopo1";
+
     const response = await fetch(apiUrl, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -20,10 +19,10 @@ exports.handler = async (event) => {
 
     const data = await response.json();
 
-    if (!data || !data.results) {
+    if (!data || !Array.isArray(data.results)) {
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: "No data returned from OpenTopoData" })
+        body: JSON.stringify({ error: "No results returned from OpenTopoData." })
       };
     }
 
@@ -31,8 +30,9 @@ exports.handler = async (event) => {
       statusCode: 200,
       body: JSON.stringify(data)
     };
+
   } catch (error) {
-    console.error("Function error:", error);
+    console.error("OpenTopo Proxy Error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Server error", details: error.message })
