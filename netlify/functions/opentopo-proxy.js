@@ -17,12 +17,23 @@ exports.handler = async (event) => {
       body: JSON.stringify({ locations })
     });
 
-    const data = await response.json();
+    const raw = await response.text(); // ← fetch as text first to inspect
+    console.log("OpenTopoData raw response:", raw);
+
+    let data;
+    try {
+      data = JSON.parse(raw);
+    } catch (parseError) {
+      return {
+        statusCode: 500,
+        body: JSON.stringify({ error: "Failed to parse OpenTopoData response", raw })
+      };
+    }
 
     if (!data || !Array.isArray(data.results)) {
       return {
         statusCode: 500,
-        body: JSON.stringify({ error: "No results returned from OpenTopoData." })
+        body: JSON.stringify({ error: "No results returned from OpenTopoData", raw })
       };
     }
 
