@@ -11,15 +11,18 @@ module.exports.handler = async function (event, context) {
       };
     }
 
-    // Format locations as LAT,LON|LAT,LON|...
+    // Create query string
     const queryString = locations
       .map((loc) => {
-        const [lat, lon] = loc.split(",");
-        return `${parseFloat(lat)},${parseFloat(lon)}`;
+        const [lat, lon] = loc.split(",").map(parseFloat);
+        return `${lat},${lon}`;
       })
       .join("|");
 
     const url = `https://api.opentopodata.org/v1/mapzen?locations=${encodeURIComponent(queryString)}`;
+
+    // DEBUG log
+    console.log("Calling URL:", url);
 
     const response = await fetch(url);
 
@@ -30,6 +33,7 @@ module.exports.handler = async function (event, context) {
     const result = await response.json();
 
     if (!result.results || result.results.length === 0) {
+      console.log("OpenTopoData result was empty:", result);
       return {
         statusCode: 502,
         body: JSON.stringify({ error: "No elevation data returned from API" }),
