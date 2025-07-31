@@ -1,0 +1,10 @@
+{
+  "name": "contour-crafter",
+  "version": "1.0.0",
+  "description": "Generate contour maps with noise or real elevation",
+  "main": "index.js",
+  "type": "module",
+  "dependencies": {
+    "node-fetch": "^2.6.11"
+  }
+}
