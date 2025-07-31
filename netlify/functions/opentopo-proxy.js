@@ -11,8 +11,8 @@ exports.handler = async function (event, context) {
       };
     }
 
-    // Sanitize and build query string
-    const queryString = locations
+    // Convert from array of strings like "45.47,-122.72" into single pipe-separated string
+    const formattedLocations = locations
       .map((loc) => {
         const parts = loc.split(",");
         if (parts.length !== 2) return null;
@@ -21,28 +21,27 @@ exports.handler = async function (event, context) {
         if (isNaN(lat) || isNaN(lon)) return null;
         return `${lat},${lon}`;
       })
-      .filter((v) => v !== null)
+      .filter(Boolean)
       .join("|");
 
-    const url = `https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(queryString)}`;
-
-    console.log("🔍 Fetching from:", url);
+    const url = `https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(formattedLocations)}`;
+    console.log("🔍 OpenTopo URL:", url);
 
     const response = await fetch(url);
 
     if (!response.ok) {
       const text = await response.text();
-      console.error("🌩 OpenTopoData response not ok:", response.status, text);
+      console.error("🌩 OpenTopoData API Error:", response.status, text);
       return {
         statusCode: response.status,
-        body: JSON.stringify({ error: "Failed to fetch from OpenTopoData", detail: text }),
+        body: JSON.stringify({ error: "OpenTopoData fetch failed", detail: text }),
       };
     }
 
     const result = await response.json();
 
-    if (!result.results || result.results.length === 0) {
-      console.error("⚠️ No elevation results:", JSON.stringify(result));
+    if (!Array.isArray(result.results) || result.results.length === 0) {
+      console.error("⚠️ No elevation results:", result);
       return {
         statusCode: 502,
         body: JSON.stringify({ error: "No elevation data returned from API" }),
@@ -54,7 +53,7 @@ exports.handler = async function (event, context) {
       body: JSON.stringify(result),
     };
   } catch (error) {
-    console.error("🔥 Proxy Error:", error);
+    console.error("🔥 Proxy function error:", error);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: "Internal server error", detail: error.message }),
