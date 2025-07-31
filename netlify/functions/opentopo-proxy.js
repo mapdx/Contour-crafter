@@ -1,61 +1,43 @@
 const fetch = require("node-fetch");
 
-exports.handler = async function (event, context) {
+exports.handler = async function(event) {
   try {
     const { locations } = JSON.parse(event.body);
 
-    if (!Array.isArray(locations) || locations.length === 0) {
+    if (!Array.isArray(locations)) {
       return {
         statusCode: 400,
-        body: JSON.stringify({ error: "No locations provided" }),
+        body: JSON.stringify({ error: "Invalid locations array." })
       };
     }
 
-    // Convert from array of strings like "45.47,-122.72" into single pipe-separated string
     const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
 
-        if (parts.length !== 2) return null;
-        const lat = parseFloat(parts[0].trim());
-        const lon = parseFloat(parts[1].trim());
-        if (isNaN(lat) || isNaN(lon)) return null;
-        return `${lat},${lon}`;
-      })
-      .filter(Boolean)
-      .join("|");
+    const response = await fetch("https://api.opentopodata.org/v1/test-dataset", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ locations: formatted })
+    });
 
-    const url = `https://api.opentopodata.org/v1/srtm90m?locations=${encodeURIComponent(formattedLocations)}`;
-    console.log("🔍 OpenTopo URL:", url);
+    const text = await response.text();
+    console.log("OpenTopoData raw response:", text);
 
-    const response = await fetch(url);
+    const data = JSON.parse(text);
 
-    if (!response.ok) {
-      const text = await response.text();
-      console.error("🌩 OpenTopoData API Error:", response.status, text);
-      return {
-        statusCode: response.status,
-        body: JSON.stringify({ error: "OpenTopoData fetch failed", detail: text }),
-      };
-    }
-
-    const result = await response.json();
-
-    if (!Array.isArray(result.results) || result.results.length === 0) {
-      console.error("⚠️ No elevation results:", result);
-      return {
-        statusCode: 502,
-        body: JSON.stringify({ error: "No elevation data returned from API" }),
-      };
+    if (!data.results || data.results.length === 0) {
+      throw new Error("No elevation data returned from OpenTopo");
     }
 
     return {
       statusCode: 200,
-      body: JSON.stringify(result),
+      body: JSON.stringify(data)
     };
-  } catch (error) {
-    console.error("🔥 Proxy function error:", error);
+
+  } catch (err) {
+    console.error("Error in opentopo-proxy:", err);
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: "Internal server error", detail: error.message }),
+      body: JSON.stringify({ error: err.message || "Unknown error" })
     };
   }
 };
