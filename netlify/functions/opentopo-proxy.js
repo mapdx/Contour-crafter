@@ -11,7 +11,8 @@ exports.handler = async function(event) {
       };
     }
 
-    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
+    // Convert to the required string format: "lat,lon"
+    const formatted = locations.map(pt => `${pt.latitude},${pt.longitude}`);
 
     const response = await fetch("https://api.opentopodata.org/v1/test-dataset", {
       method: "POST",
