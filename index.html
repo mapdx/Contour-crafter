@@ -32,7 +32,7 @@
       gap: 12px;
       flex-wrap: wrap;
       margin-top: 10px;
-    }
+    }f
 
     label {
       font-size: 0.9em;
@@ -119,26 +119,38 @@
       return data;
     }
 
-    function drawContours(data, levels) {
-      const width = data[0].length;
-      const height = data.length;
-      const contours = d3.contours()
-        .size([width, height])
-        .thresholds(levels)
-        (data.flat());
+function drawContours(data, levels) {
+  const width = data[0].length;
+  const height = data.length;
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 0.5;
+  const contours = d3.contours()
+    .size([width, height])
+    .thresholds(levels)
+    (data.flat());
 
-      contours.forEach(contour => {
-        ctx.beginPath();
-        d3.geoPath(null, ctx)(contour);
-        ctx.stroke();
-      });
+  const projection = d3.geoTransform({
+    point: function(x, y) {
+      this.stream.point(
+        (x / width) * canvas.width,
+        (y / height) * canvas.height
+      );
     }
+  });
+
+  const path = d3.geoPath(projection, ctx);
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 0.5;
+
+  contours.forEach(contour => {
+    ctx.beginPath();
+    path(contour);
+    ctx.stroke();
+  });
+}
 
     function generate() {
       const scale = parseFloat(document.getElementById("scale").value);
