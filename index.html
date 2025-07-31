@@ -121,26 +121,38 @@
     }
 
     function drawContours(data, levels) {
-      const width = data[0].length;
-      const height = data.length;
-      const contours = d3.contours()
-        .size([width, height])
-        .thresholds(levels)
-        .smooth(true)
-        (data.flat());
+    const width = data[0].length;
+    const height = data.length;
+    const contours = d3.contours()
+    .size([width, height])
+    .thresholds(levels)
+    .smooth(true)
+    (data.flat());
 
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.strokeStyle = "#000";
-      ctx.lineWidth = 0.5;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = "#fff";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.strokeStyle = "#000";
+  ctx.lineWidth = 0.5;
 
-      contours.forEach(contour => {
-        ctx.beginPath();
-        d3.geoPath(null, ctx)(contour);
-        ctx.stroke();
-      });
+  // Scale the coordinate system to fit the data in canvas
+  const scaleX = canvas.width / width;
+  const scaleY = canvas.height / height;
+
+  const transform = d3.geoTransform({
+    point: function (x, y) {
+      this.stream.point(x * scaleX, y * scaleY);
     }
+  });
+
+  const path = d3.geoPath().projection(transform).context(ctx);
+
+  contours.forEach(contour => {
+    ctx.beginPath();
+    path(contour);
+    ctx.stroke();
+  });
+}
 
     window.generate = function () {
       const scale = parseFloat(document.getElementById("scale").value);
@@ -179,7 +191,7 @@
       return newGrid;
     }
 
-    window.fetchRealGrid = async function () {
+      window.fetchRealGrid = async function () {
       const input = document.getElementById("location").value.trim();
       const match = input.match(/^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$/);
       if (!match) {
@@ -234,6 +246,9 @@
         }
 
         const upscaled = upscaleGrid(grid, 5); // 50x50 grid
+        const pixelSize = 10; // Or whatever you want for pixel scale
+        canvas.width = upscaled[0].length * pixelSize;
+        canvas.height = upscaled.length * pixelSize;
         drawContours(upscaled, parseInt(document.getElementById("levels").value));
       } catch (err) {
         alert("Failed to fetch elevation data.");
