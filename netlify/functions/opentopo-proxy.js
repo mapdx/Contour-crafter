@@ -11,10 +11,12 @@ exports.handler = async function(event) {
       };
     }
 
-    // ✅ Format as array of [lat, lon] number pairs
-    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
+    // Convert array of { latitude, longitude } objects to a pipe-separated string
+    const formatted = locations
+      .map(pt => `${pt.latitude},${pt.longitude}`)
+      .join("|");
 
-    console.log("🛰 Sending formatted locations:", JSON.stringify(formatted, null, 2));
+    console.log("🛰 Sending formatted locations string:", formatted);
 
     const response = await fetch("https://api.opentopodata.org/v1/mapzen", {
       method: "POST",
