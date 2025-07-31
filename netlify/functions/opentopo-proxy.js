@@ -11,10 +11,12 @@ exports.handler = async function(event) {
       };
     }
 
-    // Handle both [lat, lon] and { latitude, longitude }
+    // Format locations as "lat,lon" strings
     const formatted = locations.map(pt =>
-      Array.isArray(pt) ? pt : [pt.latitude, pt.longitude]
+      Array.isArray(pt) ? `${pt[0]},${pt[1]}` : `${pt.latitude},${pt.longitude}`
     );
+
+    console.log("🛰 Sending formatted locations:", JSON.stringify(formatted, null, 2));
 
     const response = await fetch("https://api.opentopodata.org/v1/mapzen", {
       method: "POST",
@@ -23,7 +25,6 @@ exports.handler = async function(event) {
     });
 
     const text = await response.text();
-    console.log("🛰 Sent locations:", JSON.stringify(formatted, null, 2));
     console.log("📩 OpenTopo raw response:", text);
 
     const data = JSON.parse(text);
@@ -36,7 +37,6 @@ exports.handler = async function(event) {
       statusCode: 200,
       body: JSON.stringify(data)
     };
-
   } catch (err) {
     console.error("❌ Error in opentopo-proxy:", err);
     return {
