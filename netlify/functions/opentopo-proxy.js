@@ -11,10 +11,8 @@ exports.handler = async function(event) {
       };
     }
 
-    // Format locations as "lat,lon" strings
-    const formatted = locations.map(pt =>
-      Array.isArray(pt) ? `${pt[0]},${pt[1]}` : `${pt.latitude},${pt.longitude}`
-    );
+    // ✅ Format as array of [lat, lon] number pairs
+    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
 
     console.log("🛰 Sending formatted locations:", JSON.stringify(formatted, null, 2));
 
@@ -37,6 +35,7 @@ exports.handler = async function(event) {
       statusCode: 200,
       body: JSON.stringify(data)
     };
+
   } catch (err) {
     console.error("❌ Error in opentopo-proxy:", err);
     return {
