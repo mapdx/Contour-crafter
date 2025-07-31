@@ -11,8 +11,8 @@ exports.handler = async function(event) {
       };
     }
 
-    // Convert to "lat,lon" format
-    const formatted = locations.map(pt => `${pt.latitude},${pt.longitude}`);
+    // OpenTopo expects array of [lat, lon]
+    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
 
     const response = await fetch("https://api.opentopodata.org/v1/test-dataset", {
       method: "POST",
@@ -21,7 +21,7 @@ exports.handler = async function(event) {
     });
 
     const text = await response.text();
-    console.log("🛰 Sent locations:", formatted);
+    console.log("🛰 Sent locations:", JSON.stringify(formatted, null, 2));
     console.log("📩 OpenTopo raw response:", text);
 
     const data = JSON.parse(text);
