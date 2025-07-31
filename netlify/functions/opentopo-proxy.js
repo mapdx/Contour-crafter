@@ -11,7 +11,7 @@ exports.handler = async function(event) {
       };
     }
 
-    // Convert to the required string format: "lat,lon"
+    // Convert to "lat,lon" format
     const formatted = locations.map(pt => `${pt.latitude},${pt.longitude}`);
 
     const response = await fetch("https://api.opentopodata.org/v1/test-dataset", {
@@ -21,7 +21,8 @@ exports.handler = async function(event) {
     });
 
     const text = await response.text();
-    console.log("OpenTopoData raw response:", text);
+    console.log("🛰 Sent locations:", formatted);
+    console.log("📩 OpenTopo raw response:", text);
 
     const data = JSON.parse(text);
 
@@ -35,7 +36,7 @@ exports.handler = async function(event) {
     };
 
   } catch (err) {
-    console.error("Error in opentopo-proxy:", err);
+    console.error("❌ Error in opentopo-proxy:", err);
     return {
       statusCode: 500,
       body: JSON.stringify({ error: err.message || "Unknown error" })
