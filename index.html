@@ -155,12 +155,20 @@
 }
 
     window.generate = function () {
-      const scale = parseFloat(document.getElementById("scale").value);
-      const levels = parseInt(document.getElementById("levels").value);
-      const smoothing = parseInt(document.getElementById("smoothing").value);
-      const data = generateNoise(512, 512, scale, smoothing);
-      drawContours(data, levels);
-    }
+  const scale = parseFloat(document.getElementById("scale").value);
+  const levels = parseInt(document.getElementById("levels").value);
+  const smoothing = parseInt(document.getElementById("smoothing").value);
+
+  const width = 512;
+  const height = 512;
+  const data = generateNoise(width, height, scale, smoothing);
+
+  // Ensure canvas matches noise dimensions
+  canvas.width = width;
+  canvas.height = height;
+
+  drawContours(data, levels);
+}
 
     function upscaleGrid(grid, scale) {
       const newGrid = [];
