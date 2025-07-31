@@ -11,10 +11,12 @@ exports.handler = async function(event) {
       };
     }
 
-    // OpenTopo expects array of [lat, lon]
-    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
+    // Handle both [lat, lon] and { latitude, longitude }
+    const formatted = locations.map(pt =>
+      Array.isArray(pt) ? pt : [pt.latitude, pt.longitude]
+    );
 
-    const response = await fetch("https://api.opentopodata.org/v1/test-dataset", {
+    const response = await fetch("https://api.opentopodata.org/v1/mapzen", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ locations: formatted })
