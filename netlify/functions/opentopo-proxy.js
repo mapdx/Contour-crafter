@@ -12,9 +12,8 @@ exports.handler = async function (event, context) {
     }
 
     // Convert from array of strings like "45.47,-122.72" into single pipe-separated string
-    const formattedLocations = locations
-      .map((loc) => {
-        const parts = loc.split(",");
+    const formatted = locations.map(pt => [pt.latitude, pt.longitude]);
+
         if (parts.length !== 2) return null;
         const lat = parseFloat(parts[0].trim());
         const lon = parseFloat(parts[1].trim());
