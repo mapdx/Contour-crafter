@@ -182,6 +182,7 @@
         });
 
         const result = await response.json();
+        console.log("Elevation API result:", result);
 
         if (!Array.isArray(result.results) || result.results.length === 0) {
           throw new Error("No elevation data returned.");
@@ -200,6 +201,7 @@
         }
 
         const normalized = elevations.map(v => (v - min) / (max - min));
+        console.log("Normalized elevation grid:", normalized);
         const data = [];
 
         for (let y = 0; y < gridSize; y++) {
