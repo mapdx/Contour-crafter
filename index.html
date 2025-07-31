@@ -161,53 +161,56 @@
       const gridSize = 10;
       const delta = 0.01; // ~1.1 km
 
-      const locations = [];
+      const rawLocations = [];
 
       for (let y = 0; y < gridSize; y++) {
         for (let x = 0; x < gridSize; x++) {
           const latOffset = lat - (gridSize / 2 - y) * delta;
           const lonOffset = lon - (gridSize / 2 - x) * delta;
-          locations.push({ latitude: latOffset, longitude: lonOffset });
+          rawLocations.push({ latitude: latOffset, longitude: lonOffset });
         }
       }
 
+      // ✅ Convert to "lat,lon" strings for OpenTopo API
+      const formattedLocations = rawLocations.map(pt => `${pt.latitude},${pt.longitude}`);
+
       try {
-  const response = await fetch("/.netlify/functions/opentopo-proxy", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ locations })
-  });
+        const response = await fetch("/.netlify/functions/opentopo-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locations: formattedLocations })
+        });
 
-  const result = await response.json();
+        const result = await response.json();
 
-  if (!Array.isArray(result.results) || result.results.length === 0) {
-    throw new Error("No elevation data returned.");
-  }
+        if (!Array.isArray(result.results) || result.results.length === 0) {
+          throw new Error("No elevation data returned.");
+        }
 
-  const elevations = result.results.map(r =>
-    typeof r.elevation === "number" ? r.elevation : 0
-  );
+        const elevations = result.results.map(r =>
+          typeof r.elevation === "number" ? r.elevation : 0
+        );
 
-  const max = Math.max(...elevations);
-  const min = Math.min(...elevations);
+        const max = Math.max(...elevations);
+        const min = Math.min(...elevations);
 
-  if (max === min) {
-    alert("Not enough elevation variation at this location.");
-    return;
-  }
+        if (max === min) {
+          alert("Not enough elevation variation at this location.");
+          return;
+        }
 
-  const normalized = elevations.map(v => (v - min) / (max - min));
-  const data = [];
+        const normalized = elevations.map(v => (v - min) / (max - min));
+        const data = [];
 
-  for (let y = 0; y < gridSize; y++) {
-    data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
-  }
+        for (let y = 0; y < gridSize; y++) {
+          data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
+        }
 
-  drawContours(data, parseInt(document.getElementById("levels").value));
-} catch (err) {
-  alert("Failed to fetch elevation data.");
-  console.error(err);
-}
+        drawContours(data, parseInt(document.getElementById("levels").value));
+      } catch (err) {
+        alert("Failed to fetch elevation data.");
+        console.error(err);
+      }
     }
 
     function download() {
