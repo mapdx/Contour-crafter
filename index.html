@@ -32,7 +32,7 @@
       gap: 12px;
       flex-wrap: wrap;
       margin-top: 10px;
-    }f
+    }
 
     label {
       font-size: 0.9em;
@@ -119,38 +119,26 @@
       return data;
     }
 
-function drawContours(data, levels) {
-  const width = data[0].length;
-  const height = data.length;
+    function drawContours(data, levels) {
+      const width = data[0].length;
+      const height = data.length;
+      const contours = d3.contours()
+        .size([width, height])
+        .thresholds(levels)
+        (data.flat());
 
-  const contours = d3.contours()
-    .size([width, height])
-    .thresholds(levels)
-    (data.flat());
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.strokeStyle = "#000";
+      ctx.lineWidth = 0.5;
 
-  const projection = d3.geoTransform({
-    point: function(x, y) {
-      this.stream.point(
-        (x / width) * canvas.width,
-        (y / height) * canvas.height
-      );
+      contours.forEach(contour => {
+        ctx.beginPath();
+        d3.geoPath(null, ctx)(contour);
+        ctx.stroke();
+      });
     }
-  });
-
-  const path = d3.geoPath(projection, ctx);
-
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.fillStyle = "#fff";
-  ctx.fillRect(0, 0, canvas.width, canvas.height);
-  ctx.strokeStyle = "#000";
-  ctx.lineWidth = 0.5;
-
-  contours.forEach(contour => {
-    ctx.beginPath();
-    path(contour);
-    ctx.stroke();
-  });
-}
 
     function generate() {
       const scale = parseFloat(document.getElementById("scale").value);
@@ -160,81 +148,12 @@ function drawContours(data, levels) {
       drawContours(data, levels);
     }
 
-    async function fetchRealGrid() {
-      const input = document.getElementById("location").value.trim();
-      const match = input.match(/^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$/);
-      if (!match) {
-        alert("Enter valid lat, lon format");
-        return;
-      }
+    function upscaleGrid(grid, factor) {
+      const h = grid.length;
+      const w = grid[0].length;
+      const upW = w * factor;
+      const upH = h * factor;
+      const result = Array.from({ length: upH }, () => Array(upW).fill(0));
 
-      const lat = parseFloat(match[1]);
-      const lon = parseFloat(match[3]);
-      const gridSize = 10;
-      const delta = 0.01; // ~1.1 km
-
-      const rawLocations = [];
-
-      for (let y = 0; y < gridSize; y++) {
-        for (let x = 0; x < gridSize; x++) {
-          const latOffset = lat - (gridSize / 2 - y) * delta;
-          const lonOffset = lon - (gridSize / 2 - x) * delta;
-          rawLocations.push({ latitude: latOffset, longitude: lonOffset });
-        }
-      }
-
-      // ✅ Convert to "lat,lon" strings for OpenTopo API
-      const formattedLocations = rawLocations.map(pt => `${pt.latitude},${pt.longitude}`);
-
-      try {
-        const response = await fetch("/.netlify/functions/opentopo-proxy", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ locations: formattedLocations })
-        });
-
-        const result = await response.json();
-        console.log("Elevation API result:", result);
-
-        if (!Array.isArray(result.results) || result.results.length === 0) {
-          throw new Error("No elevation data returned.");
-        }
-
-        const elevations = result.results.map(r =>
-          typeof r.elevation === "number" ? r.elevation : 0
-        );
-
-        const max = Math.max(...elevations);
-        const min = Math.min(...elevations);
-
-        if (max === min) {
-          alert("Not enough elevation variation at this location.");
-          return;
-        }
-
-        const normalized = elevations.map(v => (v - min) / (max - min));
-        console.log("Normalized elevation grid:", normalized);
-        const data = [];
-
-        for (let y = 0; y < gridSize; y++) {
-          data.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
-        }
-
-        drawContours(data, parseInt(document.getElementById("levels").value));
-      } catch (err) {
-        alert("Failed to fetch elevation data.");
-        console.error(err);
-      }
-    }
-
-    function download() {
-      const link = document.createElement("a");
-      link.download = "contour-map.png";
-      link.href = canvas.toDataURL();
-      link.click();
-    }
-
-    generate(); // initial render
-  </script>
-</body>
-</html>
+      for (let y = 0; y < upH; y++) {
+        for (let x
