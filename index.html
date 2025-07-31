@@ -125,6 +125,7 @@
       const contours = d3.contours()
         .size([width, height])
         .thresholds(levels)
+        .smooth(true)
         (data.flat());
 
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -140,7 +141,7 @@
       });
     }
 
-    function generate() {
+    window.generate = function () {
       const scale = parseFloat(document.getElementById("scale").value);
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
@@ -148,12 +149,105 @@
       drawContours(data, levels);
     }
 
-    function upscaleGrid(grid, factor) {
-      const h = grid.length;
-      const w = grid[0].length;
-      const upW = w * factor;
-      const upH = h * factor;
-      const result = Array.from({ length: upH }, () => Array(upW).fill(0));
+    function upscaleGrid(grid, scale) {
+      const newGrid = [];
+      const originalHeight = grid.length;
+      const originalWidth = grid[0].length;
+      const newHeight = originalHeight * scale;
+      const newWidth = originalWidth * scale;
 
-      for (let y = 0; y < upH; y++) {
-        for (let x
+      for (let y = 0; y < newHeight; y++) {
+        const row = [];
+        for (let x = 0; x < newWidth; x++) {
+          const srcY = y / scale;
+          const srcX = x / scale;
+          const y0 = Math.floor(srcY);
+          const y1 = Math.min(y0 + 1, originalHeight - 1);
+          const x0 = Math.floor(srcX);
+          const x1 = Math.min(x0 + 1, originalWidth - 1);
+          const dy = srcY - y0;
+          const dx = srcX - x0;
+
+          const top = grid[y0][x0] * (1 - dx) + grid[y0][x1] * dx;
+          const bottom = grid[y1][x0] * (1 - dx) + grid[y1][x1] * dx;
+          row.push(top * (1 - dy) + bottom * dy);
+        }
+        newGrid.push(row);
+      }
+
+      return newGrid;
+    }
+
+    window.fetchRealGrid = async function () {
+      const input = document.getElementById("location").value.trim();
+      const match = input.match(/^(-?\d+(\.\d+)?),\s*(-?\d+(\.\d+)?)$/);
+      if (!match) {
+        alert("Enter valid lat, lon format");
+        return;
+      }
+
+      const lat = parseFloat(match[1]);
+      const lon = parseFloat(match[3]);
+      const gridSize = 10;
+      const delta = 0.01;
+
+      const locations = [];
+
+      for (let y = 0; y < gridSize; y++) {
+        for (let x = 0; x < gridSize; x++) {
+          const latOffset = lat - (gridSize / 2 - y) * delta;
+          const lonOffset = lon - (gridSize / 2 - x) * delta;
+          locations.push({ latitude: latOffset, longitude: lonOffset });
+        }
+      }
+
+      try {
+        const response = await fetch("/.netlify/functions/opentopo-proxy", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locations })
+        });
+
+        const result = await response.json();
+
+        if (!Array.isArray(result.results) || result.results.length === 0) {
+          throw new Error("No elevation data returned.");
+        }
+
+        const elevations = result.results.map(r =>
+          typeof r.elevation === "number" ? r.elevation : 0
+        );
+
+        const max = Math.max(...elevations);
+        const min = Math.min(...elevations);
+
+        if (max === min) {
+          alert("Not enough elevation variation at this location.");
+          return;
+        }
+
+        const normalized = elevations.map(v => (v - min) / (max - min));
+        const grid = [];
+        for (let y = 0; y < gridSize; y++) {
+          grid.push(normalized.slice(y * gridSize, (y + 1) * gridSize));
+        }
+
+        const upscaled = upscaleGrid(grid, 5); // 50x50 grid
+        drawContours(upscaled, parseInt(document.getElementById("levels").value));
+      } catch (err) {
+        alert("Failed to fetch elevation data.");
+        console.error(err);
+      }
+    }
+
+    function download() {
+      const link = document.createElement("a");
+      link.download = "contour-map.png";
+      link.href = canvas.toDataURL();
+      link.click();
+    }
+
+    window.onload = generate;
+  </script>
+</body>
+</html>
