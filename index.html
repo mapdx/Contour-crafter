@@ -22,8 +22,7 @@
     }
 
     .section {
-      padding: 16px 0;
-      margin-top: 20px;
+      margin-top: 30px;
     }
 
     .slider-container {
@@ -64,13 +63,64 @@
 <body>
   <h1>Contour Crafter</h1>
 
-  <div style="margin-top: 20px;">
-    <canvas id="canvas" width="512" height="512"></canvas>
-  </div>
+  <canvas id="canvas" width="512" height="512"></canvas>
 
   <div class="section">
-    <h3>🌀 Generate Random Noise Contours</h3>
+    <h3>🌀 Noise Contour Generator</h3>
     <button onclick="generate()">🎲 Generate Noise Map</button>
     <div class="slider-container">
       <label>Noise Scale
-        <input type="range
+        <input type="range" id="scale" min="0.5" max="3" step="0.1" value="1.5" />
+      </label>
+      <label>Contour Lines
+        <input type="range" id="levels" min="5" max="30" step="1" value="15" />
+      </label>
+      <label>Smoothing
+        <input type="range" id="smoothing" min="1" max="5" step="1" value="3" />
+      </label>
+    </div>
+  </div>
+
+  <div class="section">
+    <h3>🌍 Real Elevation Contours</h3>
+    <input type="text" id="location" placeholder="Enter lat, lon (e.g. 46.85, -121.76)" />
+    <br>
+    <button onclick="fetchRealGrid()">🌍 Real Elevation</button>
+    <button onclick="download()">💾 Download</button>
+  </div>
+
+  <script src="https://d3js.org/d3.v7.min.js"></script>
+  <script>
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+
+    function pseudoNoise(x, y) {
+      return Math.sin(x * 2 + Math.cos(y * 3)) * Math.cos(y * 2 + Math.sin(x * 3));
+    }
+
+    function generateNoise(width, height, scale, octaves) {
+      const data = [];
+      for (let y = 0; y < height; y++) {
+        const row = [];
+        for (let x = 0; x < width; x++) {
+          let value = 0;
+          let amplitude = 1;
+          let frequency = 1;
+          let max = 0;
+          for (let o = 0; o < octaves; o++) {
+            const nx = (x / width) * scale * frequency;
+            const ny = (y / height) * scale * frequency;
+            value += pseudoNoise(nx, ny) * amplitude;
+            max += amplitude;
+            amplitude *= 0.5;
+            frequency *= 2;
+          }
+          row.push((value / max + 1) / 2);
+        }
+        data.push(row);
+      }
+      return data;
+    }
+
+    function drawContours(data, levels) {
+      const wid
