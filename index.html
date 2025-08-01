@@ -20,10 +20,10 @@
       display: block;
       margin: 0 auto;
       image-rendering: pixelated;
-      width: auto;
+      width: 100%;
+      max-width: 800px;
       height: auto;
-      max-width: 100%;
-      }
+    }
 
     .slider-container {
       display: flex;
@@ -147,13 +147,13 @@
     window.generate = function () {
       canvas.width = 512;
       canvas.height = 512;
+      canvas.style.width = canvas.width + "px";
+      canvas.style.height = canvas.height + "px";
+
       const scale = parseFloat(document.getElementById("scale").value);
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
       const data = generateNoise(512, 512, scale, smoothing);
-      // Ensure the canvas is correctly sized for noise
-      canvas.width = 512;
-      canvas.height = 512;
       drawContours(data, levels);
     }
 
@@ -244,6 +244,9 @@
         const pixelSize = 10;
         canvas.width = upscaled[0].length * pixelSize;
         canvas.height = upscaled.length * pixelSize;
+        canvas.style.width = canvas.width + "px";
+        canvas.style.height = canvas.height + "px";
+
         drawContours(upscaled, parseInt(document.getElementById("levels").value));
       } catch (err) {
         alert("Failed to fetch elevation data.");
