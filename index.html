@@ -145,6 +145,9 @@
       const levels = parseInt(document.getElementById("levels").value);
       const smoothing = parseInt(document.getElementById("smoothing").value);
       const data = generateNoise(512, 512, scale, smoothing);
+      // Ensure the canvas is correctly sized for noise
+      canvas.width = 512;
+      canvas.height = 512;
       drawContours(data, levels);
     }
 
