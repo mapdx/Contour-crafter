@@ -241,6 +241,8 @@
         const pixelSize = 10;
         canvas.width = upscaled[0].length * pixelSize;
         canvas.height = upscaled.length * pixelSize;
+        canvas.style.width = canvas.width + "px";
+        canvas.style.height = canvas.height + "px";
         drawContours(upscaled, parseInt(document.getElementById("levels").value));
       } catch (err) {
         alert("Failed to fetch elevation data.");
